@@ -84,19 +84,23 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post("/logout", (req, res) => {
+const redisClient = require("../config/redis"); // Initialize Redis
+
+router.post("/logout", async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1]; // Extract token from headers
+    const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
       console.log("❌ Logout attempt failed: No token provided.");
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Decode token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log(`🚪 User Logged Out: ${decoded.id} (Role: ${decoded.role})`); 
+    // Store token in Redis with expiration time matching the JWT expiry
+    await redisClient.set(token, "blacklisted", "EX", decoded.exp - Math.floor(Date.now() / 1000));
 
+    console.log(`🚪 User Logged Out: ${decoded.id} (Role: ${decoded.role})`);
     res.json({ message: "Logout successful" });
   } catch (error) {
     console.error("❌ Error in logout:", error.message);

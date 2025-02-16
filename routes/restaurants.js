@@ -120,7 +120,7 @@ router.get("/my-complaints", authMiddleware, async (req, res) => {
       .populate("complaints.user", "email")
       .select("name complaints");
 
-    console.log("📌 Restaurants found:", JSON.stringify(restaurants, null, 2));
+    // console.log("📌 Restaurants found:", JSON.stringify(restaurants, null, 2));
 
     if (!restaurants || restaurants.length === 0) {
       return res.status(404).json({ message: "No complaints found for this user." });
@@ -129,12 +129,12 @@ router.get("/my-complaints", authMiddleware, async (req, res) => {
     const userComplaints = restaurants.flatMap((restaurant) =>
       restaurant.complaints
         .filter((complaint) => {
-          console.log(
-            "🔎 Comparing Complaint User ID:",
-            complaint.user._id.toString(),
-            "| Request User ID:",
-            req.user.id
-          );
+          // console.log(
+          //   "🔎 Comparing Complaint User ID:",
+          //   complaint.user._id.toString(),
+          //   "| Request User ID:",
+          //   req.user.id
+          // );
           return complaint.user._id.toString() === req.user.id; // ✅ FIX: Compare `_id.toString()`
         })
         .map((complaint) => ({
@@ -149,7 +149,7 @@ router.get("/my-complaints", authMiddleware, async (req, res) => {
         }))
     );
 
-    console.log("✅ User complaints:", JSON.stringify(userComplaints, null, 2));
+    // console.log("✅ User complaints:", JSON.stringify(userComplaints, null, 2));
 
     res.json({ complaints: userComplaints });
   } catch (error) {
@@ -217,7 +217,7 @@ router.post("/:id/complaint", authMiddleware, async (req, res) => {
 router.get("/owner", authMiddleware, async (req, res) => {
   try {
 
-    console.log("Restaurant Found: ");
+    // console.log("Restaurant Found: ");
     
     if (req.user.role !== "RestaurantOwner") {
       return res.status(403).json({ message: "Access denied. Only Restaurant Owners can access this." });
@@ -225,7 +225,7 @@ router.get("/owner", authMiddleware, async (req, res) => {
 
     const restaurant = await Restaurant.findOne({ owner: req.user.id });
 
-    console.log("Restaurant Found: ", restaurant);
+    // console.log("Restaurant Found: ", restaurant);
 
     res.json({ restaurant: restaurant || null });
   } catch (error) {
@@ -326,11 +326,11 @@ router.get("/:id/complaints", authMiddleware, async (req, res) => {
       .populate("complaints.user", "email"); // Ensure user is populated
 
     if (!restaurant) {
-      console.log("❌ Restaurant not found for complaints.");
+      // console.log("❌ Restaurant not found for complaints.");
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
-    console.log("📌 Complaints Found:", JSON.stringify(restaurant.complaints, null, 2));
+    // console.log("📌 Complaints Found:", JSON.stringify(restaurant.complaints, null, 2));
     res.json({ complaints: restaurant.complaints || [] }); // Ensure empty array if null
   } catch (error) {
     console.error("❌ Error fetching complaints:", error);
@@ -452,7 +452,7 @@ router.get("/notifications", authMiddleware, async (req, res) => {
     if (req.user.role === "Admin") {
       // Admin can view all notifications
       notifications = await Notification.find().sort({ createdAt: -1 });
-      console.log(notifications);
+      // console.log(notifications);
 
     } else {
       // Regular users can only see their own notifications
