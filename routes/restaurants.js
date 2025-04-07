@@ -412,6 +412,19 @@ router.put("/complaint/:id/status", authMiddleware, verifyRole(["FoodSafetyOffic
     complaint.remark = remark;
     complaint.activityLog.push({ user: userId, status, remark, timestamp: new Date() });
 
+    // 📢 🔔 Create a notification for the complaint owner
+    // 📢 🔔 Create a notification for the complaint owner
+    const notification = new Notification({
+      user: complaint.user,  // The user who created the complaint
+      message: `Your complaint status has been updated to "${status}".`,
+      complaint: complaint._id,
+      referenceId:complaintId,
+      type: "ComplaintStatusUpdate",  // Add the required 'type' field
+      isRead: false,
+      createdAt: new Date()
+    });
+
+    await notification.save();
     await restaurant.save();
 
     res.json({ message: "Complaint status updated successfully", complaint });
@@ -462,6 +475,27 @@ router.get("/notifications", authMiddleware, async (req, res) => {
     res.status(200).json({ notifications });
   } catch (error) {
     console.error("❌ Error fetching notifications:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.put("/notifications/:id/read", authMiddleware, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    const userId = req.user.id;
+
+    const notification = await Notification.findOne({ _id: notificationId, user: userId });
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    notification.isRead = true;
+    await notification.save();
+
+    res.status(200).json({ message: "Notification marked as read", notification });
+  } catch (error) {
+    console.error("❌ Error updating notification status:", error);
     res.status(500).json({ error: "Server error" });
   }
 });

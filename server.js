@@ -27,7 +27,6 @@ app.use('/api/auth', authRoutes);
 
 const adminRoutes = require('./routes/adminRoutes');
 app.use(adminRoutes);
-
 io.on("connection", (socket) => {
     console.log(`Client connected: ${socket.id}`);
   
