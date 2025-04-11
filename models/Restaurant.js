@@ -36,11 +36,15 @@ const restaurantSchema = new mongoose.Schema({
   contact: { type: String, required: true },
   cuisineType: { type: String, required: true },
   description: { type: String },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // Linked to RestaurantOwner
-  reviews: [reviewSchema], // Array of reviews
-  complaints: [complaintSchema], // Array of complaints
-  avgRating: { type: Number, default: 0, min: 0, max: 5 }, // Auto-calculated
-  createdAt: { type: Date, default: Date.now }
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  reviews: [reviewSchema],
+  complaints: [complaintSchema],
+  avgRating: { type: Number, default: 0, min: 0, max: 5 },
+  createdAt: { type: Date, default: Date.now },
+  photos: [{ // Add this field
+    url: { type: String }, // Path relative to your uploads directory
+    filename: { type: String }
+  }]
 });
 
 // Function to update avgRating whenever a new review is added

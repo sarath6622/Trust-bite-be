@@ -3,6 +3,7 @@ const Restaurant = require('../models/Restaurant');
 const authMiddleware = require('../middleware/auth'); // For JWT Authentication
 const verifyRole = require('../middleware/role');
 const router = express.Router();
+const { upload } = require('./multerConfig'); 
 
 module.exports = (io) => {
   const router = express.Router();
@@ -39,7 +40,7 @@ router.put("/complaints/:id", (req, res) => {
 });
 
 // 🔹 Register a new restaurant (Only RestaurantOwners)
-router.post('/register', authMiddleware, verifyRole(['RestaurantOwner', 'Admin']), async (req, res) => {
+router.post('/register', authMiddleware, verifyRole(['RestaurantOwner', 'Admin']), upload.array('photos', 5), async (req, res) => { //Use multer middleware
   try {
     const { name, address, contact, cuisineType, description } = req.body;
 
@@ -47,18 +48,25 @@ router.post('/register', authMiddleware, verifyRole(['RestaurantOwner', 'Admin']
       return res.status(400).json({ message: 'All fields are required' });
     }
 
+    const photos = req.files.map(file => ({
+      url: `/uploads/restaurant-images/${file.filename}`,
+      filename: file.filename
+    }));
+
     const newRestaurant = new Restaurant({
       name,
       address,
       contact,
       cuisineType,
       description,
-      owner: req.user.id, // Associate restaurant with the logged-in owner (RestaurantOwner or Admin)
+      owner: req.user.id,
+      photos: photos // Add the photos array to the newRestaurant object
     });
 
     await newRestaurant.save();
-    res.status(201).json({ message: 'Restaurant registered successfully' });
+    res.status(201).json({ message: 'Restaurant registered successfully', restaurant: newRestaurant }); //Return the new restaurant object
   } catch (error) {
+    console.error("Error registering restaurant:", error); //Log the error for debugging
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -161,7 +169,7 @@ router.get("/my-complaints", authMiddleware, async (req, res) => {
 // 🔹 Submit a complaint about a restaurant (Only authenticated users)
 const Notification = require("../models/Notification");
 
-router.post("/:id/complaint", authMiddleware, async (req, res) => {
+router.post("/:id/complaint", authMiddleware, upload.single('image'), async (req, res) => {
   try {
     const { message } = req.body;
     const restaurantId = req.params.id;
@@ -175,11 +183,18 @@ router.post("/:id/complaint", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
-    // ✅ Create complaint
+    // Handle image upload
+    const image = req.file ? {
+      url: `/uploads/complaint-images/${req.file.filename}`,
+      filename: req.file.filename
+    } : null;
+
+    // Create complaint
     const newComplaint = {
       user: req.user.id,
       restaurant: restaurantId,
       message,
+      image, // Include image in the complaint
       status: "Submitted",
       activityLog: [
         {
@@ -195,7 +210,7 @@ router.post("/:id/complaint", authMiddleware, async (req, res) => {
     restaurant.complaints.push(newComplaint);
     await restaurant.save();
 
-    // ✅ Create Notification for the restaurant owner
+    // Create Notification for the restaurant owner
     const notification = new Notification({
       user: restaurant.owner, // Notify restaurant owner
       message: `New complaint submitted for ${restaurant.name}`,
@@ -211,7 +226,6 @@ router.post("/:id/complaint", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
 
 // 🔹 Check if restaurant owner has any restaurants registered
 router.get("/owner", authMiddleware, async (req, res) => {
@@ -235,12 +249,11 @@ router.get("/owner", authMiddleware, async (req, res) => {
 });
 
 // 🔹 Update restaurant details (Only Owner)
-router.put('/manage/:id', authMiddleware, async (req, res) => {
+router.put('/manage/:id', authMiddleware, upload.array('photos'), async (req, res) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
 
-    // Ensure only the owner can update the restaurant
     if (restaurant.owner.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Unauthorized' });
     }
@@ -252,9 +265,22 @@ router.put('/manage/:id', authMiddleware, async (req, res) => {
     restaurant.cuisineType = cuisineType || restaurant.cuisineType;
     restaurant.description = description || restaurant.description;
 
+    // Handle photo updates
+    if (req.files && req.files.length > 0) {
+      const newPhotos = req.files.map(file => ({ url: `/uploads/restaurant-images/${file.filename}`, filename: file.filename }));
+      restaurant.photos.push(...newPhotos); // Add new photos to the existing array
+    }
+
+    //Handle photo removals (if needed - requires additional logic in frontend to send photo removal info)
+    //Example (assuming frontend sends an array of filenames to remove):
+    // const photosToRemove = req.body.photosToRemove || [];
+    // restaurant.photos = restaurant.photos.filter(photo => !photosToRemove.includes(photo.filename));
+
+
     await restaurant.save();
     res.json({ message: 'Restaurant updated successfully', restaurant });
   } catch (error) {
+    console.error("Error updating restaurant:", error); //Log the error for debugging
     res.status(500).json({ message: 'Server error' });
   }
 });

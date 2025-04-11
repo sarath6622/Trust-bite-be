@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
+const path = require('path'); // Ensure path is required
 const app = express();
 const server = http.createServer(app); // Attach HTTP server properly
 const io = new Server(server, {
@@ -24,6 +25,8 @@ app.use(express.json());
 const restaurantRoutes = require('./routes/restaurants')(io);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'routes/uploads')));
+
 
 const adminRoutes = require('./routes/adminRoutes');
 app.use(adminRoutes);
